@@ -1,5 +1,5 @@
 process SEGUL {
-    tag "${fasta_ls[0].getSimpleName()} summary statistics"
+    tag "summary statistics for ${fasta_ls.size()} files"
 
     conda "bioconda::segul=0.22.1"
     // container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?

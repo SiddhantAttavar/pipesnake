@@ -9,7 +9,7 @@ process IQTREE {
 
     input:
     path(fasta_ls)
-    
+
     output:
     path("*.contree"), emit: contree
     path("*.iqtree"), emit: iqtree
@@ -24,22 +24,22 @@ process IQTREE {
 
     script:
     //locus = fasta.getBaseName().split('.')[0]
-    
+
     """
-     for fasta in ${fasta_ls.join(' ')}; do
-        file_lines=\$(cat \$fasta | wc -l)
-        if [ \$file_lines -gt 0 ]
-        then
-            sp_cnt=\$(cat \$fasta | grep ">" | wc -l)
-            if [ \$sp_cnt -lt 4 ]
-            then
-                echo "\$fasta" >> fasta_few_specieis.txt
-            else
-                iqtree -s \${fasta} -T AUTO ${task.ext.args} -pre \$(basename "\$fasta")
-            fi
-        else
-            echo "\$fasta" >> empty_fastq.txt
-        fi       
+    for fasta in ${fasta_ls.join(' ')}; do
+       file_lines=\$(cat \$fasta | wc -l)
+       if [ \$file_lines -gt 0 ]
+       then
+           sp_cnt=\$(cat \$fasta | grep ">" | wc -l)
+           if [ \$sp_cnt -lt 4 ]
+           then
+               echo "\$fasta" >> fasta_few_specieis.txt
+           else
+               iqtree -s \${fasta} -T AUTO ${task.ext.args} -pre \$(basename "\$fasta")
+           fi
+       else
+           echo "\$fasta" >> empty_fastq.txt
+       fi
     done
 
     cat <<-END_VERSIONS > versions.yml

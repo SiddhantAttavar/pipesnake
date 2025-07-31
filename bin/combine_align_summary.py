@@ -13,7 +13,8 @@ def combine_align_summary(pre_trim_locus_summary, post_trim_locus_summary, outpu
         for row in pre_trim_reader:
             locus = row['locus'].split('.')[0]
             row.pop('locus')
-            combined_summary[locus] = {f'pre_trim_{k}': v for k, v in row.items()}
+            combined_summary[locus] = {f'pre_trim_{k}': v for k, v in row.items() }
+            combined_summary[locus].update({f'post_trim_{k}': 0 for k, v in row.items() })
             combined_summary[locus]['locus'] = locus
 
     keys = set()

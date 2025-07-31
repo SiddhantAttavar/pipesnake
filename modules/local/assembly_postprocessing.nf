@@ -10,13 +10,14 @@ process ASSEMBLY_POSTPROCESSING {
     tuple val(sample_id), path(assembly_input)
 
     output:
-    tuple val(sample_id), path ("${sample_id}_assembly_processed.fasta"), emit: processed
+    tuple val(sample_id), path ("${sample_id}_assembly_processed.fasta"), emit: processed, optional: true
     path "versions.yml", emit: versions
+    path "dropped_samples.txt", emit: dropped_samples
 
 
     script:
     """
-    assembly_postprocessing.py ${assembly_input} ${sample_id} ${task.ext.assembly_header} ${task.ext.read_depth_threshold}
+    assembly_postprocessing.py ${assembly_input} ${sample_id} dropped_samples.txt ${task.ext.assembly_header} ${task.ext.read_depth_threshold}
 
     echo "${task.process}:
       python: \$(python -c 'import sys; print(sys.version.split()[0])')" > versions.yml

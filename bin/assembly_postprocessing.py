@@ -3,17 +3,23 @@
 import sys
 import re
 import argparse
+import os
 
 
-def assembly_postprocessing(assembly_input, sample_id, assembly_header, read_depth_threshold):
+def assembly_postprocessing(assembly_input, sample_id, dropped_samples, assembly_header, read_depth_threshold):
     """Process assembly file and generate processed file with renamed and filtered contigs"""
 
     output_path = "{}_assembly_processed.fasta".format(sample_id)
     contig_cntr = 1
 
-    with open(output_path, "w") as assembly_processed:
+    with open(dropped_samples, 'a') as dropped_file:
+        if os.path.getsize(assembly_input) == 0:
+            dropped_file.write(sample_id + '\n')
+            dropped_file.close()
+
+    with open(output_path, "w") as assembly_processed, open(assembly_input, 'r') as assembly_file:
         write_contig = True
-        for line in assembly_input:
+        for line in assembly_file:
             if not line.startswith(">"):
                 if write_contig:
                     assembly_processed.write(line)
@@ -43,13 +49,18 @@ def parse_args(argv=None):
     parser.add_argument(
         "input_fasta",
         metavar="FILE_IN",
-        type=argparse.FileType('r'),
+        type=str,
         help="Input fasta file"
     )
     parser.add_argument(
         "sample_id",
         type=str,
         help="Sample ID",
+    )
+    parser.add_argument(
+        "dropped_samples",
+        type=str,
+        help="Dropped files log",
     )
     parser.add_argument(
         "assembly_header",
@@ -70,6 +81,7 @@ def main(argv=None):
     assembly_postprocessing(
         args.input_fasta,
         args.sample_id,
+        args.dropped_samples,
         args.assembly_header,
         args.read_depth_threshold
     )

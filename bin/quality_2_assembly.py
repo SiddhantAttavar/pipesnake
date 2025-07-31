@@ -1,5 +1,5 @@
 #!/usr/bin/env python
- 
+
 """Provide a command line tool to validate and transform tabular samplesheets."""
 
 import argparse
@@ -19,6 +19,7 @@ def get_seq_info(fasta_file):
     total_length = 0
     seq_lengths = []
     curr_id = None
+    curr_seq = ""
     with open(fasta_file, "r") as sample_fasta:
         for line in sample_fasta:
             if line.startswith(">"):
@@ -30,9 +31,11 @@ def get_seq_info(fasta_file):
                 curr_id = line.strip()[1:]
             else:
                 curr_seq += line.strip()
+        total_length += len(curr_seq)
+        seq_lengths.append(len(curr_seq))
         all_seqs[curr_id] = curr_seq
     seq_lengths = sorted(seq_lengths)
-    
+
     run_count = 0
     for ix, val in enumerate(seq_lengths):
         run_count += val
@@ -43,16 +46,16 @@ def get_seq_info(fasta_file):
 
 
 def quality_2_assembly(sample, lineage, sample_fasta_file, prg_fasta_file, outdir):
-    
+
     sample_seqs, sample_seqs_lengths, sample_n50 = get_seq_info(sample_fasta_file)
     stats = {}
 
     stats['assembled_contig_count'] = len(sample_seqs_lengths)
     stats['assembled_contig_totlength'] = sum(sample_seqs_lengths)
     stats['assembled_contig_n50'] = sample_n50
-    
+
     prg_seqs, prg_seqs_lengths, prg_n50 = get_seq_info(prg_fasta_file)
-    
+
     stats['annotated_contig_count'] = len(prg_seqs_lengths)
     stats['annotated_contig_totlength'] = sum(prg_seqs_lengths)
     stats['annotated_contig_n50'] = prg_n50
@@ -66,7 +69,7 @@ def quality_2_assembly(sample, lineage, sample_fasta_file, prg_fasta_file, outdi
         out_f.write("individual,lineage,metric,value\n")
         for k, v in stats.items():
             out_f.write("{},{},{},{}\n".format(sample, lineage, k, v))
-        
+
 
 def parse_args(argv=None):
     """Define and immediately parse command line arguments."""
@@ -87,22 +90,22 @@ def parse_args(argv=None):
         type=Path,
         help="Query file path in fasta.",
     )
-    
+
     parser.add_argument(
         "--sample-fasta",
         metavar="SAMPLE-FASTA",
         type=Path,
         help="Query file path in fasta.",
     )
-    
-    
+
+
     parser.add_argument(
         "--output-dir",
         metavar="FILE_OUT",
         type=Path,
         help="output.",
     )
-    
+
     parser.add_argument(
         "-l",
         "--log-level",

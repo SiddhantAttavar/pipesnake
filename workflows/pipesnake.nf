@@ -50,6 +50,7 @@ include {PERL_CLEANUP} from '../modules/local/perl_cleanup'
 include {MAKE_PRG} from '../modules/local/make_prg'
 include {QUALITY_2_ASSEMBLY} from '../modules/local/quality_2_assembly'
 include {READ_DEPTH_STATISTICS} from '../modules/local/read_depth_statistics'
+include {DROPPED_SAMPLES_LOG} from '../modules/local/dropped_samples_log'
 include {PHYLOGENY_MAKE_ALIGNMENTS} from '../modules/local/phylogeny_make_alignments'
 include { GBLOCKS } from '../modules/local/gblocks'
 include { CLIPKIT } from '../modules/local/clipkit'
@@ -304,9 +305,19 @@ main:
         ch_versions = ch_versions.mix(TRINITY.out.versions)
     }
 
+    // Drop empty samples
+    ch_assembly_out.branch {
+        empty: it[1].size() == 0
+        valid: it[1].size() > 0
+    }
+    .set { ch_assembly_out }
+
+    ch_assembly_out.empty.map { tuple(it[0], "assembly") }
+        .set { ch_dropped }
+
     // Perform assembly posprocessing
     ASSEMBLY_POSTPROCESSING(
-        ch_assembly_out
+        ch_assembly_out.valid
     )
 
     BLAT(
@@ -337,16 +348,27 @@ main:
             .join(ch_lineage)
     ).RGB.set{ch_prg_out}
 
+    // Drop empty PRGs
+    ch_prg_out.branch {
+        empty: it[1].size() == 0
+        valid: it[1].size() > 0
+    }
+    .set { ch_prg_out }
+
+    ch_dropped.concat(
+        ch_prg_out.empty.map { tuple(it[0], "make_prg") }
+    ).set { ch_dropped }
+
     // Find the quality of the assembly
     QUALITY_2_ASSEMBLY(
         ASSEMBLY_POSTPROCESSING.out.processed
-            .join(ch_prg_out)
+            .join(ch_prg_out.valid)
             .join(ch_lineage)
     )
 
     // Read depth statistics
     if (params.assembly == "SPAdes") {
-        ch_prg_out.multiMap { val ->
+        ch_prg_out.valid.multiMap { val ->
             sample_id: val[0]
             prg: val[1]
         }.set {ch_processed_assembly}
@@ -355,6 +377,11 @@ main:
             ch_processed_assembly.prg.collect()
         )
     }
+
+    // Write dropped entries to csv file
+    DROPPED_SAMPLES_LOG(
+        ch_dropped.collect()
+    )
 
     // Log software versions used
     ch_versions = ch_versions.mix(BBMAP_DEDUPE.out.versions)
@@ -370,7 +397,7 @@ main:
 
 emit:
     ch_versions = ch_versions
-    ch_prg_out = ch_prg_out
+    ch_prg_out = ch_prg_out.valid
 }
 
 workflow ALIGNMENT {
@@ -431,12 +458,14 @@ main:
     BBMAP_REFORMAT(
         SED.out.seded
             .map{if (params.batching_size == 1) [it] else it}
-    ).reformated.set{ ch_alignment }
+    ).reformated
+        .set{ ch_alignment }
 
     // Get alignment summary (post-trimming)
     SEGUL2(
-        BBMAP_REFORMAT.out.reformated
+        ch_alignment
             .flatten()
+            .filter { !it.empty() }
             .toList(),
         'post_trim'
     )
@@ -542,7 +571,7 @@ workflow PIPESNAKE {
     }
 
     if (params.stage == "end-prg") {
-        exit 0
+        return
     }
 
     if (params.stage.toLowerCase() == "from-alignment") {
